@@ -3,6 +3,8 @@ extern crate rand;
 use rand::prelude::*;
 use rand::distributions::StandardNormal;
 
+const E: f64 = 2.718281828;
+
 pub struct Network {
     pub num_layers: usize,
     pub sizes: Vec<i32>,
@@ -19,13 +21,13 @@ impl Network {
         let mut previous_weights = sizes[0];
 
         for x in &sizes[1..] {
-            println!("Number of biases in layer:{}", x);
+            //println!("Number of biases in layer:{}", x);
             let mut temp_bias: Vec<f64> = vec![];
             let mut temp_weight: Vec<Vec<f64>> = vec![];
             for i in 0..*x {
                 temp_bias.push(SmallRng::from_entropy().sample(StandardNormal));
                 let mut node_weights: Vec<f64> = vec![];
-                println!("Number of weights per node:{}", previous_weights);
+                //println!("Number of weights per node:{}", previous_weights);
                 for i in 0..previous_weights {
                     node_weights.push(SmallRng::from_entropy().sample(StandardNormal));
                 }
@@ -43,6 +45,50 @@ impl Network {
             weights: my_weights,
         };
         my_network
+    }
+
+    pub fn feed_forward(&self, mut input: Vec<f64>) -> Vec<f64> {
+        let mut output: Vec<f64> = vec![];
+
+        // for each layer
+        for i in 0..self.biases.len() {
+            let mut temp = vec![];
+            for j in 0..self.biases[i].len() {
+                let val = Network::sigmoid(&Network::dot_product(&self.weights[i][j], &input).unwrap() + &self.biases[i][j]);
+                temp.push(val);
+            };
+            if i == self.biases.len()-1 {
+                return temp
+            }
+            input = temp;
+        }
+        // should never get here, need to do proper error handling
+        output
+    }
+
+    fn dot_product(w: &Vec<f64>, x: &Vec<f64>) -> Result<f64, ()> {
+        if w.len() != x.len() {
+            return Err(())
+        } else {
+            let mut dprod = 0.0;
+            for i in 0..w.len() {
+                dprod += w[i]*x[i];
+            }
+            return Ok(dprod)
+        }
+    }
+
+    // assume vectors same length, need to add appropriate error handling
+    fn v_addition(u: &Vec<f64>, v: &Vec<f64>) -> Vec<f64> {
+        let mut output: Vec<f64> = vec![];
+        for i in 0..u.len() {
+            output.push(u[i]+v[i]);
+        };
+        output
+    }
+
+    fn sigmoid(param: f64) -> f64 {
+        1.0/(1.0+E.powf(-param))
     }
 
     pub fn display(&self) {
