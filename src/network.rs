@@ -3,113 +3,61 @@ extern crate rand;
 use rand::prelude::*;
 use rand::distributions::StandardNormal;
 
-const E: f64 = 2.718281828;
-
+#[derive(Debug)]
 pub struct Network {
-    pub num_layers: usize,
-    pub sizes: Vec<i32>,
-    pub biases: Vec<Vec<f64>>,
-    pub weights: Vec<Vec<Vec<f64>>>,
+    num_layers: usize,
+    sizes: Vec<i32>,
+    biases: Vec<Vec<f64>>,
+    weights: Vec<Vec<Vec<f64>>>,
 }
 
 impl Network {
     pub fn new(sizes: Vec<i32>) -> Network {
-        let v = SmallRng::from_entropy().sample(StandardNormal);
-        let my_layers = sizes.len();
-        let mut my_biases: Vec<Vec<f64>> = vec![];
-        let mut my_weights: Vec<Vec<Vec<f64>>> = vec![];
-        let mut previous_weights = sizes[0];
+        let mut my_net = Network {
+            num_layers: sizes.len(),
+            sizes,
+            biases: vec![],
+            weights: vec![],
+        };
 
-        for x in &sizes[1..] {
-            //println!("Number of biases in layer:{}", x);
-            let mut temp_bias: Vec<f64> = vec![];
-            let mut temp_weight: Vec<Vec<f64>> = vec![];
+        my_net.set_biases();
+        my_net.set_weights();
+
+        my_net
+    }
+
+    fn set_biases(&mut self) {
+        // for each value in sizes (besides the first) push a vector containing sizes[i] number of N(0,1) elements
+        // create a vector for the layer then push that to biases
+        for i in 1..self.num_layers {
+            let mut current_bias: Vec<f64> = vec![];
+            let num = self.sizes[i] as usize;
+            for j in 0..num {
+                current_bias.push(SmallRng::from_entropy().sample(StandardNormal));
+            }
+            self.biases.push(current_bias);
+        }
+    }
+
+    fn set_weights(&mut self) {
+        println!("{:?}", self.sizes);
+        let mut w = self.sizes.clone();
+        w.remove(0);
+        let dim = w.iter().zip(self.sizes.iter());
+        println!("{:?}", dim);
+
+        // each element of dim represents the dimensions of an array of weights
+        // each tuple in dim is a layer and each layer contains an array
+        for (x, y) in dim {
+            let mut layer: Vec<Vec<f64>> = vec![];
             for i in 0..*x {
-                temp_bias.push(SmallRng::from_entropy().sample(StandardNormal));
-                let mut node_weights: Vec<f64> = vec![];
-                //println!("Number of weights per node:{}", previous_weights);
-                for i in 0..previous_weights {
-                    node_weights.push(SmallRng::from_entropy().sample(StandardNormal));
+                let mut array: Vec<f64> = vec![];
+                for j in 0..*y {
+                    array.push(SmallRng::from_entropy().sample(StandardNormal));
                 }
-                temp_weight.push(node_weights);
+                layer.push(array);
             }
-            my_biases.push(temp_bias);
-            my_weights.push(temp_weight);
-            previous_weights = *x;
-        };
-
-        let my_network = Network {
-            num_layers: my_layers,
-            sizes: sizes,
-            biases: my_biases,
-            weights: my_weights,
-        };
-        my_network
-    }
-
-    pub fn feed_forward(&self, mut input: Vec<f64>) -> Vec<f64> {
-        let mut output: Vec<f64> = vec![];
-
-        // for each layer
-        for i in 0..self.biases.len() {
-            let mut temp = vec![];
-            for j in 0..self.biases[i].len() {
-                let val = Network::sigmoid(&Network::dot_product(&self.weights[i][j], &input).unwrap() + &self.biases[i][j]);
-                temp.push(val);
-            };
-            if i == self.biases.len()-1 {
-                return temp
-            }
-            input = temp;
-        }
-        // should never get here, need to do proper error handling
-        output
-    }
-
-    fn dot_product(w: &Vec<f64>, x: &Vec<f64>) -> Result<f64, ()> {
-        if w.len() != x.len() {
-            return Err(())
-        } else {
-            let mut dprod = 0.0;
-            for i in 0..w.len() {
-                dprod += w[i]*x[i];
-            }
-            return Ok(dprod)
-        }
-    }
-
-    // assume vectors same length, need to add appropriate error handling
-    fn v_addition(u: &Vec<f64>, v: &Vec<f64>) -> Vec<f64> {
-        let mut output: Vec<f64> = vec![];
-        for i in 0..u.len() {
-            output.push(u[i]+v[i]);
-        };
-        output
-    }
-
-    fn sigmoid(param: f64) -> f64 {
-        1.0/(1.0+E.powf(-param))
-    }
-
-    pub fn display(&self) {
-        println!("Number of layers: {}", self.num_layers);
-        for x in &self.sizes {
-            println!("Layer sizes: {}", x);
-        };
-        for x in &self.biases {
-            println!("Layer");
-            for y in x {
-                println!("Bias: {}", y);
-            }
-        }
-        for x in &self.weights {
-            println!("Layer");
-            for y in x {
-                println!("Node");
-                for z in y {
-                    println!("Weight: {}", z);
-                }
-            }
+            self.weights.push(layer);
         }
     }
 }

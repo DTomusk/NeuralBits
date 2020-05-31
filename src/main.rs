@@ -1,4 +1,4 @@
-mod network;
+mod netwerk;
 
 fn main() {
     /*
@@ -6,9 +6,19 @@ fn main() {
     let num = sigmoid(0.0);
     println!("Sigmoid of 420: {}", num);
     */
-    let mut my_network = network::Network::new(vec![3,10,5,10]);
+    let mut my_network = netwerk::Network::new(vec![3,10,5,10]);
+
+    println!("{:#?}", my_network);
+
     let mut data = vec![0.78,-0.53,0.21];
-    //my_network.display();
-    let result = my_network.feed_forward(data);
-    println!("{:?}", result);
+}
+
+#[cfg(Test)]
+mod tests {
+    use super::*;
+
+    // test whether the dimensions of a network are as expected 
+    #[test]
+    fn network_dimensions() {
+    }
 }
