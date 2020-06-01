@@ -2,6 +2,8 @@ extern crate rand;
 
 use rand::prelude::*;
 use rand::distributions::StandardNormal;
+use rand::thread_rng;
+use rand::seq::SliceRandom;
 
 const E: f64 = 2.71828;
 
@@ -15,38 +17,42 @@ pub struct Network {
 
 impl Network {
     pub fn new(sizes: Vec<i32>) -> Network {
+        let nl = sizes.len();
         let mut my_net = Network {
-            num_layers: sizes.len(),
-            sizes,
-            biases: vec![],
-            weights: vec![],
+            num_layers: nl,
+            sizes: sizes.clone(),
+            biases: Network::set_biases(&sizes, nl, true),
+            weights: Network::set_weights(&sizes, nl, true),
         };
-
-        my_net.set_biases();
-        my_net.set_weights();
 
         my_net
     }
 
-    fn set_biases(&mut self) {
+    fn set_biases(sizes: &Vec<i32>, num_layers: usize, random: bool) -> Vec<Vec<f64>> {
         // for each value in sizes (besides the first) push a vector containing sizes[i] number of N(0,1) elements
         // create a vector for the layer then push that to biases
-        for i in 1..self.num_layers {
+        let mut b: Vec<Vec<f64>> = vec![];
+        for i in 1..num_layers {
             let mut current_bias: Vec<f64> = vec![];
-            let num = self.sizes[i] as usize;
+            let num = sizes[i] as usize;
             for _ in 0..num {
-                current_bias.push(SmallRng::from_entropy().sample(StandardNormal));
+                if random {
+                    current_bias.push(SmallRng::from_entropy().sample(StandardNormal));
+                } else {
+                    current_bias.push(0.0);
+                }
             }
-            self.biases.push(current_bias);
+            b.push(current_bias);
         }
+        b
     }
 
     // each node has a number of weights equal to the number of nodes in the previous layer
-    fn set_weights(&mut self) {
-        println!("{:?}", self.sizes);
-        let mut w = self.sizes.clone();
-        w.remove(0);
-        let dim = w.iter().zip(self.sizes.iter());
+    fn set_weights(sizes: &Vec<i32>, num_layers: usize, random: bool) -> Vec<Vec<Vec<f64>>> {
+        let mut z = sizes.clone();
+        z.remove(0);
+        let dim = z.iter().zip(sizes.iter());
+        let mut w: Vec<Vec<Vec<f64>>> = vec![];
 
         // each element of dim represents the dimensions of an array of weights
         // each tuple in dim is a layer and each layer contains an array
@@ -55,12 +61,17 @@ impl Network {
             for _ in 0..*x {
                 let mut array: Vec<f64> = vec![];
                 for _ in 0..*y {
-                    array.push(SmallRng::from_entropy().sample(StandardNormal));
+                    if random {
+                        array.push(SmallRng::from_entropy().sample(StandardNormal));
+                    } else {
+                        array.push(0.0);
+                    }
                 }
                 layer.push(array);
             }
-            self.weights.push(layer);
+            w.push(layer);
         }
+        w
     }
 
     // I'm having a lot of fun using .iter() and stuff
@@ -69,6 +80,7 @@ impl Network {
         let mut t: Vec<f64> = vec![];
         for (w, b) in self.weights.iter().zip(self.biases.iter()) {
             for n in w.iter() {
+                // .clone() is a big no no
                 t.push(dot_product(n.to_vec(), a.clone()));
             }
             a = sigmoid(t.iter().zip(b.iter()).map(|(x,y)| x + y).collect());
@@ -76,6 +88,35 @@ impl Network {
         }
         println!("{:#?}", a);
         a
+    }
+
+    // stochastic gradient descent
+    // training data gives a list of tuples of inputs and expected outputs
+    pub fn sgd(&mut self, mut training_data: Vec<(Vec<f64>, Vec<f64>)>, epochs: i32, mini_batch_size: usize, eta: f64) {
+        let n = training_data.len();
+        let mut rng = thread_rng();
+        for j in 0..epochs {
+            training_data.shuffle(&mut rng);
+            for mini_batch in training_data.chunks(mini_batch_size) {
+                self.update_mini_batch(mini_batch, eta);
+            }
+        }
+    }
+
+    fn update_mini_batch(&mut self, mini_batch: &[(Vec<f64>,Vec<f64>)], eta: f64) {
+        // nablas start off as zero arrays of the shape of weights and biases
+        // how do you get their shapes? you can use sizes in the same way that the constructor does
+        // in fact, you can just call set weights and biases with a special boolean parameter
+        let mut nabla_b = Network::set_biases(&self.sizes, self.num_layers, false);
+        let mut nabla_w = Network::set_weights(&self.sizes, self.num_layers, false);
+
+
+        // iterate over the mini batch, call back propogate to find delta nablas and then adjust nablas
+        // finally update weights and biases
+    }
+
+    fn backprop(&mut self, x: Vec<f64>, y: Vec<f64>) {
+
     }
 }
 
